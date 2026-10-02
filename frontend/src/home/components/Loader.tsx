@@ -81,7 +81,8 @@ export default function Loader({ onDone }: { onDone: () => void }) {
     tl.to(progress, {
       value: 100, duration: 3.1, ease: "none",
       onUpdate: () => {
-        countRef.current!.textContent = String(Math.round(progress.value)).padStart(3, "0");
+        // 卸载时 useGSAP 回滚时间轴会再触发一次 onUpdate，此时节点已被 React 摘掉。
+        if (countRef.current) countRef.current.textContent = String(Math.round(progress.value)).padStart(3, "0");
       },
     }, 0)
       .fromTo(".ld-progress i", { scaleX: 0 }, { scaleX: 1, duration: 3.1, ease: "none" }, 0)
