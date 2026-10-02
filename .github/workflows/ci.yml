@@ -17,6 +17,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Prepare Linux command sandbox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bubblewrap
+          if command -v aa-status >/dev/null && sudo aa-status --enabled; then
+            sudo install -m 644 deploy/apparmor-bwrap /etc/apparmor.d/signoff-bwrap
+            sudo apparmor_parser -r /etc/apparmor.d/signoff-bwrap
+          fi
       - name: Install dependencies
         working-directory: backend
         run: |
