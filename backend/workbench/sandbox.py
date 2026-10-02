@@ -20,7 +20,7 @@ def sandbox_command(args, cwd):
     if ROOT.is_relative_to(work) or work.is_relative_to(ROOT):
         raise ValueError("隔离工作区不能包含应用目录")
     command = [
-        executable, "--unshare-all", "--die-with-parent", "--new-session",
+        executable, "--unshare-all", "--disable-userns", "--die-with-parent", "--new-session",
         "--cap-drop", "ALL", "--clearenv",
     ]
     for name in ("/usr", "/bin", "/lib", "/lib64"):

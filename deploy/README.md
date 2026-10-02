@@ -5,6 +5,7 @@
 - 使用 `nginx-signoff.conf` 替换旧的 Signoff IP/域名虚拟主机，先执行 `nginx -t` 再 reload。其它网站的虚拟主机不需要改动。
 - 使用已有 PM2 的 `startOrRestart deploy/ecosystem.config.cjs --update-env` 和 `save` 更新后端。
 - Ubuntu 安装 `bubblewrap`，在 `signoff` 用户下验证可创建命名空间。公开地址的真实仓库命令缺少此工具时拒绝执行；不能通过关闭 `AGENT_SANDBOX` 绕过公网限制。
+- Ubuntu 24.04 的 AppArmor 若阻止 bwrap 创建命名空间，安装本目录 `apparmor-bwrap` 到 `/etc/apparmor.d/signoff-bwrap`，执行 `apparmor_parser -r /etc/apparmor.d/signoff-bwrap`。此例外只匹配 `/usr/bin/bwrap`，不要关闭系统全局的用户命名空间限制；隔离内部禁止再创建用户命名空间。
 - 命令只能读写本次 worktree；系统工具和 Python 虚拟环境只读挂载，应用配置、数据库、主机 home 不挂载。网络默认隔离，需要网络的仓库测试会如实失败。完整权限的文件工具仍不能离开 worktree。
 - 保持应用 `.env` 为 `root:signoff 640`、数据目录 `signoff:signoff 750`，TLS 私钥为 `root:root 600`。
 - 安装依赖前升级虚拟环境 pip：`.venv/bin/python -m pip install --upgrade 'pip>=26.2.0'`。只安装可信且锁定的依赖。
