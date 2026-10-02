@@ -1,7 +1,7 @@
 import { useStore } from "../lib/store";
 import { Alert, Button } from "../components";
 import { useSearchParams } from "react-router";
-import { ENTRY_UNAVAILABLE } from "../api";
+import { DEMO_NOTICE_PREFIX, ENTRY_UNAVAILABLE, REPO_URL } from "../api";
 
 // Action failures and unavailable entry notices share the dismissible banner.
 export function GlobalError() {
@@ -9,7 +9,8 @@ export function GlobalError() {
   const [params, setParams] = useSearchParams();
   const message = s.error || (params.get("notice") === "entry-unavailable" ? ENTRY_UNAVAILABLE : "");
   if (!message) return null;
-  const notice = message === ENTRY_UNAVAILABLE;
+  const demo = message.startsWith(DEMO_NOTICE_PREFIX);
+  const notice = demo || message === ENTRY_UNAVAILABLE;
   function close() {
     s.clearError();
     if (params.get("notice") === "entry-unavailable") {
@@ -41,7 +42,16 @@ export function GlobalError() {
           </>
         }
       >
-        {message}
+        {demo ? (
+          <>
+            当前为演示版本，请前往仓库进行本地部署：
+            <a href={REPO_URL} target="_blank" rel="noreferrer">
+              {REPO_URL}
+            </a>
+          </>
+        ) : (
+          message
+        )}
       </Alert>
     </div>
   );

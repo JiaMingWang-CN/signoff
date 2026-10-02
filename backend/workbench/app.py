@@ -30,7 +30,7 @@ from pydantic import (
 from starlette.middleware.sessions import SessionMiddleware
 
 from .agent import RunConfig, approvals, emit, jobs, run_agent, tests_ok, verify
-from .config import safe_error, settings
+from .config import DEMO_NOTICE, safe_error, settings
 from .identity import client_address, guest_address, quota_actor
 from .db import (
     Audit,
@@ -144,6 +144,13 @@ async def check_origin(request, call_next):
         origin = request.headers.get("origin")
         if origin and origin.rstrip("/") != settings.public_url.rstrip("/"):
             return JSONResponse({"detail": "请求来源不被允许"}, 403)
+        # A public deployment is a view-only demo for visitors.
+        if (
+            public_deployment()
+            and not request.session.get("user")
+            and request.url.path != "/api/auth/logout"
+        ):
+            return JSONResponse({"detail": DEMO_NOTICE}, 403)
     context = guest_address.set(client_address(request))
     try:
         return await call_next(request)
@@ -196,6 +203,11 @@ def require_login(request, message="此操作需要 GitHub 登录"):
     validate_session(request)
     if not request.session.get("user"):
         raise HTTPException(401, message)
+
+
+def public_deployment():
+    host = (urlparse(settings.public_url).hostname or "").lower()
+    return host not in ("127.0.0.1", "localhost", "::1")
 
 
 def require_allowlist_when_exposed():

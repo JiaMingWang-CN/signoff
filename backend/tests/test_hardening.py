@@ -420,3 +420,16 @@ def test_unresolvable_cmd_shim_names_the_file(monkeypatch, tmp_path):
     with pytest.raises(RuntimeError) as error:
         services.resolve_executable("tool")
     assert "tool.cmd" in str(error.value)
+
+
+def test_public_deployment_is_view_only_for_guests(client, monkeypatch):
+    from workbench.config import DEMO_NOTICE
+
+    # Local deployments keep working without a GitHub login.
+    assert client.post("/api/repos/none/ask", json={}).status_code != 403
+    monkeypatch.setattr(settings, "public_url", "https://www.signoff.top")
+    blocked = client.post("/api/repos/none/ask", json={}, headers={"origin": "https://www.signoff.top"})
+    assert blocked.status_code == 403 and blocked.json() == {"detail": DEMO_NOTICE}
+    assert "github.com/JiaMingWang-CN/signoff" in DEMO_NOTICE
+    assert client.get("/api/repos").status_code == 200
+    assert client.post("/api/auth/logout", headers={"origin": "https://www.signoff.top"}).status_code == 200

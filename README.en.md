@@ -189,9 +189,10 @@ All server-side settings live in `backend/.env`; see [`backend/.env.example`](ba
 
 ### Guests and accounts
 
-- Guests may only use the demo repository, with presets limited to read-only or simulated: no full permission, custom directory or custom test command.
+- **On a public deployment (`PUBLIC_URL` is not a loopback address), guests are view-only**: they can browse the demo repository's overview, issues, scans, plans and reports, but every write request (POST / PUT / PATCH / DELETE) — sync, Ask AI, scans, planning, agent runs, the console, PRs, settings — is rejected by the backend with "This is a demo version, please deploy locally from the repository" and the repository link. Signed-in users are not restricted.
+- Local deployments (loopback address) do not apply this restriction: without signing in you can still use the demo repository, with presets limited to read-only or simulated: no full permission, custom directory or custom test command.
 - Changing settings, importing local repositories, viewing the audit log and creating real PRs all require GitHub sign-in.
-- Guest quotas are counted per client IP (the frontend proxy forwards `X-Forwarded-For`) and set in the environment configuration.
+- On local deployments guest quotas are counted per client IP (the frontend proxy forwards `X-Forwarded-For`) and set in the environment configuration; guests of a public deployment cannot start these operations, so no quota is consumed.
 - OAuth tokens are stored encrypted; access tokens with refresh info are refreshed before they expire.
 
 ### What counts as "tests passed"

@@ -215,6 +215,8 @@ export type Conversation = {
   updated: string;
 };
 export const ENTRY_UNAVAILABLE = "暂未开放入口";
+export const DEMO_NOTICE_PREFIX = "当前为演示版本";
+export const REPO_URL = "https://github.com/JiaMingWang-CN/signoff";
 
 export type Session = {
   user: { login: string; avatar_url: string; html_url: string } | null;

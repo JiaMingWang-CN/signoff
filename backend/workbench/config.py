@@ -57,6 +57,10 @@ if not settings.app_secret:
     settings.app_secret = secret_file.read_text(encoding="utf-8").strip()
 
 
+REPO_URL = "https://github.com/JiaMingWang-CN/signoff"
+DEMO_NOTICE = "当前为演示版本，请前往仓库进行本地部署：" + REPO_URL
+
+
 def safe_error(error: Exception | str, limit: int | None = 4000) -> str:
     text = str(error)
     try:
