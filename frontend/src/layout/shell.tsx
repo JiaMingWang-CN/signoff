@@ -14,7 +14,7 @@ import {
   Sun,
   X,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import {
   Link,
   NavLink,
@@ -27,19 +27,21 @@ import { api } from "../api";
 import { useStore } from "../lib/store";
 import { cn } from "../lib/utils";
 import { Badge, Button, Menu, MenuLink } from "../components";
-import AgentRun from "../pages/AgentRun";
-import Calendar from "../pages/Calendar";
-import Console from "../pages/Console";
-import Overview from "../pages/Overview";
-import Planning from "../pages/Planning";
 import Repositories from "../pages/Repositories";
 import RequireRepo from "../pages/RequireRepo";
-import Runs from "../pages/Runs";
-import Search_ from "../pages/Search";
-import Security from "../pages/Security";
-import Settings from "../pages/Settings";
 import { CommandPalette } from "./command";
 import { navGroups } from "./nav";
+
+// Each page loads on first visit so the workbench entry chunk stays small.
+const AgentRun = lazy(() => import("../pages/AgentRun"));
+const Calendar = lazy(() => import("../pages/Calendar"));
+const Console = lazy(() => import("../pages/Console"));
+const Overview = lazy(() => import("../pages/Overview"));
+const Planning = lazy(() => import("../pages/Planning"));
+const Runs = lazy(() => import("../pages/Runs"));
+const Search_ = lazy(() => import("../pages/Search"));
+const Security = lazy(() => import("../pages/Security"));
+const Settings = lazy(() => import("../pages/Settings"));
 
 export function Logo() {
   return (
@@ -320,6 +322,7 @@ export default function Shell() {
           onToggle={() => setCollapsed((v) => !v)}
         />
         <main className="live-main">
+          <Suspense fallback={null}>
           <Routes>
             <Route path="/repos" element={<Repositories />} />
             <Route path="/settings" element={<Settings />} />
@@ -382,6 +385,7 @@ export default function Shell() {
             />
             <Route path="*" element={<Navigate to="/repos" replace />} />
           </Routes>
+          </Suspense>
         </main>
       </div>
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
