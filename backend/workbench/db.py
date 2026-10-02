@@ -89,7 +89,10 @@ class Run(SQLModel, table=True):
     finished: str = ""
     actor: str = ""
     quota_actor: str = ""
-    __table_args__ = (Index("ix_run_actor_created", "actor", "created"),)
+    __table_args__ = (
+        Index("ix_run_actor_created", "actor", "created"),
+        Index("ix_run_quota_actor_created", "quota_actor", "created"),
+    )
 
 
 class Event(SQLModel, table=True):
@@ -202,6 +205,8 @@ def ensure_columns(target=None):
                     f"{column.type.compile(target.dialect)} "
                     f"DEFAULT {column_default(models[table.name], column.name)}"
                 )
+            for index in table.indexes:
+                index.create(connection, checkfirst=True)
 
 
 def initialize():

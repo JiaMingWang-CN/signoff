@@ -97,6 +97,26 @@ def test_guest_budget_includes_input_without_calling_model(monkeypatch):
     assert not services.guest_llm_lock.locked()
 
 
+def test_existing_database_gets_security_columns_and_indexes(tmp_path):
+    from sqlalchemy import create_engine, inspect
+    from workbench.db import ensure_columns
+
+    target = create_engine("sqlite:///" + (tmp_path / "old.db").as_posix())
+    with target.begin() as connection:
+        for table in ("scan", "plan", "run"):
+            connection.exec_driver_sql(f'CREATE TABLE "{table}" (id TEXT PRIMARY KEY, repo_id TEXT)')
+        connection.exec_driver_sql('CREATE TABLE conversation (id TEXT PRIMARY KEY, actor TEXT)')
+    ensure_columns(target)
+    ensure_columns(target)
+    inspector = inspect(target)
+    assert "actor" in {column["name"] for column in inspector.get_columns("scan")}
+    assert "ix_scan_actor" in {index["name"] for index in inspector.get_indexes("scan")}
+    assert "ix_plan_actor" in {index["name"] for index in inspector.get_indexes("plan")}
+    assert "ix_conversation_quota_actor" in {index["name"] for index in inspector.get_indexes("conversation")}
+    assert "ix_run_quota_actor_created" in {index["name"] for index in inspector.get_indexes("run")}
+    target.dispose()
+
+
 @pytest.mark.skipif(os.name != "posix" or not shutil.which("bwrap"), reason="Linux bubblewrap required")
 def test_sandbox_hides_secrets_and_protects_runtime(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "agent_sandbox", True)

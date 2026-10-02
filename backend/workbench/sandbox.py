@@ -25,6 +25,8 @@ def sandbox_command(args, cwd):
     ]
     for name in ("/usr", "/bin", "/lib", "/lib64"):
         if Path(name).exists():
+            if ROOT.is_relative_to(Path(name).resolve()):
+                raise ValueError("系统运行时挂载不能包含应用目录")
             command += ["--ro-bind", name, name]
     for name in ("/etc/ssl", "/etc/ld.so.cache", "/etc/passwd", "/etc/group",
                  "/etc/nsswitch.conf", "/etc/hosts", "/etc/resolv.conf"):
@@ -33,6 +35,11 @@ def sandbox_command(args, cwd):
     runtime = str(Path(sys.prefix).resolve())
     if not Path(runtime).is_relative_to("/usr"):
         command += ["--ro-bind", runtime, runtime]
+    base_runtime = str(Path(sys.base_prefix).resolve())
+    if not Path(base_runtime).is_relative_to("/usr") and base_runtime != runtime:
+        if ROOT.is_relative_to(base_runtime):
+            raise ValueError("Python 基础运行时不能包含应用目录")
+        command += ["--ro-bind", base_runtime, base_runtime]
     command += [
         "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",
         "--dir", "/home/worker", "--bind", str(work), str(work),
@@ -43,6 +50,7 @@ def sandbox_command(args, cwd):
         "HOME": "/home/worker", "TMPDIR": "/tmp", "LANG": "C.UTF-8",
         "PATH": str(Path(sys.executable).parent) + ":/usr/local/bin:/usr/bin:/bin",
         "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8",
+        "LD_LIBRARY_PATH": str(Path(base_runtime) / "lib"),
     }.items():
         command += ["--setenv", key, value]
     return command + ["--chdir", str(work), "--", *args]
