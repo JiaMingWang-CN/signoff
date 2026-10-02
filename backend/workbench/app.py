@@ -265,8 +265,13 @@ def me(request: Request):
 @app.get("/api/auth/github/login")
 def login(request: Request):
     if not settings.github_client_id or not settings.github_client_secret:
-        raise HTTPException(503, "请配置 GitHub OAuth App")
-    require_allowlist_when_exposed()
+        return RedirectResponse(settings.public_url + "/repos?notice=entry-unavailable")
+    try:
+        require_allowlist_when_exposed()
+    except HTTPException as error:
+        if error.status_code != 503:
+            raise
+        return RedirectResponse(settings.public_url + "/repos?notice=entry-unavailable")
     state = secrets.token_urlsafe(32)
     request.session["oauth_state"] = state
     return RedirectResponse(
@@ -333,11 +338,20 @@ def logout(request: Request):
     return {"ok": True}
 
 
+async def github_repo_info(name, token, guest=False):
+    try:
+        return await github("/repos/" + name, token)
+    except HTTPException as error:
+        if guest and error.status_code in (401, 403):
+            raise HTTPException(503, "暂未开放入口") from error
+        raise
+
+
 @app.get("/api/github/repos")
 async def github_repos(request: Request):
     token = await github_token(request)
     if not request.session.get("user"):
-        data = await github("/repos/" + settings.demo_repo, token)
+        data = await github_repo_info(settings.demo_repo, token, guest=True)
         return [data]
     result = []
     for page in range(1, 11):
@@ -547,7 +561,7 @@ async def import_repo(body: ImportInput, request: Request):
         raise HTTPException(503, tool["hint"])
     token = await github_token(request)
     if source == "github":
-        await github("/repos/" + name, token)
+        await github_repo_info(name, token, guest=not request.session.get("user"))
     if existing:
         repo = existing
         repo.status = "importing"

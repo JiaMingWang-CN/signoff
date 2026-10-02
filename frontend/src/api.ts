@@ -214,6 +214,8 @@ export type Conversation = {
   created: string;
   updated: string;
 };
+export const ENTRY_UNAVAILABLE = "暂未开放入口";
+
 export type Session = {
   user: { login: string; avatar_url: string; html_url: string } | null;
   demo_repo: string;

@@ -1,18 +1,31 @@
 import { useStore } from "../lib/store";
 import { Alert, Button } from "../components";
+import { useSearchParams } from "react-router";
+import { ENTRY_UNAVAILABLE } from "../api";
 
-// Failures from actions and from background polling, with a retry.
+// Action failures and unavailable entry notices share the dismissible banner.
 export function GlobalError() {
   const s = useStore();
-  if (!s.error) return null;
+  const [params, setParams] = useSearchParams();
+  const message = s.error || (params.get("notice") === "entry-unavailable" ? ENTRY_UNAVAILABLE : "");
+  if (!message) return null;
+  const notice = message === ENTRY_UNAVAILABLE;
+  function close() {
+    s.clearError();
+    if (params.get("notice") === "entry-unavailable") {
+      const next = new URLSearchParams(params);
+      next.delete("notice");
+      setParams(next, { replace: true });
+    }
+  }
   return (
     <div className="global-error">
       <Alert
-        tone="danger"
-        title="操作失败"
+        tone={notice ? "info" : "danger"}
+        title={notice ? "提示" : "操作失败"}
         action={
           <>
-            <Button
+            {!notice && <Button
               size="sm"
               variant="outline"
               onClick={() => {
@@ -21,14 +34,14 @@ export function GlobalError() {
               }}
             >
               重试
-            </Button>
-            <Button size="sm" variant="ghost" onClick={s.clearError}>
+            </Button>}
+            <Button size="sm" variant="ghost" onClick={close}>
               关闭
             </Button>
           </>
         }
       >
-        {s.error}
+        {message}
       </Alert>
     </div>
   );

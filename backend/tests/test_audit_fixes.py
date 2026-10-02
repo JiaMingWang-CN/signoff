@@ -153,7 +153,9 @@ def test_login_is_refused_when_exposed_without_an_allowlist(client, monkeypatch)
     monkeypatch.setattr(settings, "github_client_secret", "secret")
     monkeypatch.setattr(settings, "public_url", "https://workbench.example.com")
     monkeypatch.setattr(settings, "allowed_github_users", "")
-    assert client.get("/api/auth/github/login").status_code == 503
+    response = client.get("/api/auth/github/login", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://workbench.example.com/repos?notice=entry-unavailable"
     monkeypatch.setattr(settings, "public_url", "http://127.0.0.1:5173")
     # follow_redirects=False: the 307 points at the real GitHub authorize URL.
     assert client.get("/api/auth/github/login", follow_redirects=False).status_code == 307

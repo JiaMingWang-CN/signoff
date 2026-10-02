@@ -324,7 +324,7 @@ def test_oauth_callback_creates_encrypted_session_and_refreshes(client, monkeypa
 
     monkeypatch.setattr(routes, "oauth_token", exchange)
     monkeypatch.setattr(routes, "github", profile)
-    # The login route 503s without OAuth credentials; CI has no backend/.env,
+    # The login route shows an unavailable notice without OAuth credentials; CI has no backend/.env,
     # so the test must not depend on the developer's local configuration.
     monkeypatch.setattr(settings, "github_client_id", "test-client-id")
     monkeypatch.setattr(settings, "github_client_secret", "test-client-secret")

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Repo, Session, Settings } from "../api";
+import { ENTRY_UNAVAILABLE } from "../api";
 import { useResource } from "./resource";
 
 export type Theme = "light" | "dark";
@@ -107,7 +108,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const message = (e as Error).message;
         setError(message);
         // The banner states what failed; the toast survives navigation.
-        notify(message, true);
+        if (message !== ENTRY_UNAVAILABLE) notify(message, true);
       } finally {
         setBusy("");
       }
