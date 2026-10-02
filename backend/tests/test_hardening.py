@@ -433,3 +433,10 @@ def test_public_deployment_is_view_only_for_guests(client, monkeypatch):
     assert "github.com/JiaMingWang-CN/signoff" in DEMO_NOTICE
     assert client.get("/api/repos").status_code == 200
     assert client.post("/api/auth/logout", headers={"origin": "https://www.signoff.top"}).status_code == 200
+    # Entering the demo repository is allowed; any other repository is not.
+    other = client.post(
+        "/api/repos/import",
+        json={"name": "someone/else"},
+        headers={"origin": "https://www.signoff.top"},
+    )
+    assert other.status_code == 401 and other.json()["detail"] == "请先使用 GitHub 登录"

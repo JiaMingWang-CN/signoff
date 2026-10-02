@@ -27,7 +27,7 @@
 
 ## 三、Demo 模式（线上只读演示）
 
-线上演示（如 https://www.signoff.top）面向访客**只能查看**：可以浏览示例仓库 `JiaMingWang-CN/oss-workbench-demo`（由 `DEMO_REPO` 配置）的概览、Issues、扫描结果、计划与报告；点击同步、Ask AI、扫描、规划、Agent 运行、控制台、创建 PR 等任何操作按钮，都会提示：
+线上演示（如 https://www.signoff.top）面向访客**只能查看**：可以浏览示例仓库 `JiaMingWang-CN/oss-workbench-demo`（由 `DEMO_REPO` 配置）的概览、Issues、扫描结果、计划与报告；点击“体验示例仓库”可以进入示例仓库；进入后点击同步、Ask AI、扫描、规划、Agent 运行、控制台、创建 PR 等任何操作按钮，都会提示：
 
 > 当前为演示版本，请前往仓库进行本地部署：https://github.com/JiaMingWang-CN/signoff
 

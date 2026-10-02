@@ -144,11 +144,13 @@ async def check_origin(request, call_next):
         origin = request.headers.get("origin")
         if origin and origin.rstrip("/") != settings.public_url.rstrip("/"):
             return JSONResponse({"detail": "请求来源不被允许"}, 403)
-        # A public deployment is a view-only demo for visitors.
+        # A public deployment is a view-only demo for visitors. Opening the
+        # demo repository is how they get in; the import endpoint itself still
+        # refuses any other repository for guests.
         if (
             public_deployment()
             and not request.session.get("user")
-            and request.url.path != "/api/auth/logout"
+            and request.url.path not in ("/api/auth/logout", "/api/repos/import")
         ):
             return JSONResponse({"detail": DEMO_NOTICE}, 403)
     context = guest_address.set(client_address(request))
