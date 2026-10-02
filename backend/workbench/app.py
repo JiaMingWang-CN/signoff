@@ -31,6 +31,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .agent import RunConfig, approvals, emit, jobs, run_agent, tests_ok, verify
 from .config import safe_error, settings
+from .identity import client_address, guest_address, quota_actor
 from .db import (
     Audit,
     Event,
@@ -132,6 +133,25 @@ async def lifespan(app):
 
 
 app = FastAPI(title="Signoff", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def check_origin(request, call_next):
+    validate_session(request)
+    if not request.session.get("user"):
+        actor(request)
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        origin = request.headers.get("origin")
+        if origin and origin.rstrip("/") != settings.public_url.rstrip("/"):
+            return JSONResponse({"detail": "请求来源不被允许"}, 403)
+    context = guest_address.set(client_address(request))
+    try:
+        return await call_next(request)
+    finally:
+        guest_address.reset(context)
+
+
+# The session must be decoded before the authentication/origin middleware.
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.app_secret,
@@ -141,37 +161,39 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def check_origin(request, call_next):
-    if request.method not in ("GET", "HEAD", "OPTIONS"):
-        origin = request.headers.get("origin")
-        if origin and origin.rstrip("/") != settings.public_url.rstrip("/"):
-            return JSONResponse({"detail": "请求来源不被允许"}, 403)
-    return await call_next(request)
-
-
 @app.exception_handler(Exception)
 async def failure(request, error):
     return JSONResponse({"detail": safe_error(error)}, 500)
 
 
+def validate_session(request):
+    user = request.session.get("user")
+    if not user:
+        return
+    allowed = {u.strip().lower() for u in settings.allowed_github_users.split(",") if u.strip()}
+    exposed = (urlparse(settings.public_url).hostname or "").lower() not in ("127.0.0.1", "localhost", "::1")
+    try:
+        get(Token, request.session.get("token_id") or "")
+    except HTTPException:
+        request.session.clear()
+        return
+    login = user.get("login", "").lower()
+    if not login or (allowed and login not in allowed) or (exposed and not allowed):
+        request.session.clear()
+
+
 def actor(request):
+    validate_session(request)
     login = (request.session.get("user") or {}).get("login")
     if login:
         return login
-    # A guest is identified by its peer address. Behind the bundled front-end
-    # proxy (vite, xfwd) every peer is loopback, so the proxy's own entry is
-    # used instead: it appends the address it saw as the LAST X-Forwarded-For
-    # hop. Earlier entries are client-supplied and ignored, and a peer that
-    # is not loopback is never allowed to name another address.
-    host = request.client.host if request.client else "unknown"
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if host in ("127.0.0.1", "::1") and forwarded:
-        host = forwarded.split(",")[-1].strip() or host
-    return "guest:" + host
+    if not request.session.get("guest_id"):
+        request.session["guest_id"] = secrets.token_urlsafe(32)
+    return "guest:" + request.session["guest_id"]
 
 
 def require_login(request, message="此操作需要 GitHub 登录"):
+    validate_session(request)
     if not request.session.get("user"):
         raise HTTPException(401, message)
 
@@ -190,6 +212,7 @@ def require_allowlist_when_exposed():
 
 
 def repo_for(request, identity, ready=True):
+    validate_session(request)
     repo = get(Repository, identity)
     if (
         repo.source == "local" or repo.name.lower() != settings.demo_repo.lower()
@@ -203,7 +226,24 @@ def repo_for(request, identity, ready=True):
 def run_for(request, identity):
     run = get(Run, identity)
     repo_for(request, run.repo_id)
+    if not request.session.get("user") and run.actor != actor(request):
+        raise HTTPException(404, "记录不存在")
     return run
+
+
+def visible_items(model, request, repo_id):
+    filters = {"repo_id": repo_id}
+    if not request.session.get("user"):
+        filters["actor"] = actor(request)
+    return all_items(model, **filters)
+
+
+def owned_record(model, request, identity):
+    item = get(model, identity)
+    repo_for(request, item.repo_id)
+    if not request.session.get("user") and item.actor != actor(request):
+        raise HTTPException(404, "记录不存在")
+    return item
 
 
 @app.get("/api/health")
@@ -278,6 +318,7 @@ async def callback(request: Request, code: str = "", state: str = "", error: str
 
 @app.post("/api/auth/logout")
 def logout(request: Request):
+    user = actor(request)
     identity = request.session.get("token_id")
     if identity:
         from sqlmodel import Session
@@ -287,7 +328,7 @@ def logout(request: Request):
             if token:
                 session.delete(token)
                 session.commit()
-    audit("logout", actor(request))
+    audit("logout", user)
     request.session.clear()
     return {"ok": True}
 
@@ -615,15 +656,15 @@ async def ask_repo(identity: str, body: Question, request: Request):
 @app.get("/api/repos/{identity}/scans")
 def scans(identity: str, request: Request):
     repo_for(request, identity)
-    return all_items(Scan, repo_id=identity)[::-1]
+    return visible_items(Scan, request, identity)[::-1]
 
 
 @app.post("/api/repos/{identity}/scans")
 async def scan(identity: str, request: Request):
     repo = repo_for(request, identity)
-    if any(s.status == "running" for s in all_items(Scan, repo_id=identity)):
+    if any(s.status == "running" for s in visible_items(Scan, request, identity)):
         raise HTTPException(409, "扫描正在进行")
-    item = save(Scan(repo_id=identity, sha=repo.sha))
+    item = save(Scan(repo_id=identity, sha=repo.sha, actor=actor(request)))
     launch(scan_repository(item.id, actor(request)))
     audit("scan_started", actor(request), scan_id=item.id)
     return item
@@ -631,8 +672,7 @@ async def scan(identity: str, request: Request):
 
 @app.post("/api/scans/{identity}/review")
 async def review(identity: str, request: Request):
-    scan = get(Scan, identity)
-    repo_for(request, scan.repo_id)
+    scan = owned_record(Scan, request, identity)
     if scan.status != "complete":
         raise HTTPException(409, "请等待扫描完成")
     return await review_findings(scan, actor(request))
@@ -640,8 +680,7 @@ async def review(identity: str, request: Request):
 
 @app.post("/api/scans/{identity}/review/pause")
 async def pause_scan_review(identity: str, request: Request):
-    scan = get(Scan, identity)
-    repo_for(request, scan.repo_id)
+    scan = owned_record(Scan, request, identity)
     if not pause_review(identity):
         raise HTTPException(409, "当前没有进行中的复核")
     return get(Scan, identity)
@@ -663,8 +702,7 @@ class FindingStatus(BaseModel):
 def finding_status(
     identity: str, finding_id: str, body: FindingStatus, request: Request
 ):
-    scan = get(Scan, identity)
-    repo_for(request, scan.repo_id)
+    scan = owned_record(Scan, request, identity)
     if not any(f["id"] == finding_id for f in scan.findings):
         raise HTTPException(404, "发现不存在")
     scan.findings = [
@@ -689,8 +727,7 @@ class FindingsStatus(BaseModel):
 
 @app.post("/api/scans/{identity}/findings/status")
 def findings_status(identity: str, body: FindingsStatus, request: Request):
-    scan = get(Scan, identity)
-    repo_for(request, scan.repo_id)
+    scan = owned_record(Scan, request, identity)
     known = {f["id"] for f in scan.findings}
     missing = [i for i in body.ids if i not in known]
     if missing:
@@ -714,7 +751,7 @@ def findings_status(identity: str, body: FindingsStatus, request: Request):
 @app.get("/api/repos/{identity}/plans")
 def plans(identity: str, request: Request):
     repo_for(request, identity)
-    return all_items(Plan, repo_id=identity)[::-1]
+    return visible_items(Plan, request, identity)[::-1]
 
 
 @app.delete("/api/repos/{identity}/plans")
@@ -722,7 +759,8 @@ def clear_plans(identity: str, request: Request):
     """Drop every plan, schedule and version of this repository so the work
     starts again from scanning. Scans, Issues and run history are kept."""
     repo_for(request, identity)
-    deleted = delete_items(Plan, repo_id=identity)
+    filters = {} if request.session.get("user") else {"actor": actor(request)}
+    deleted = delete_items(Plan, repo_id=identity, **filters)
     audit("plans_cleared", actor(request), repo_id=identity, deleted=deleted)
     return {"deleted": deleted}
 
@@ -731,7 +769,7 @@ def clear_plans(identity: str, request: Request):
 async def draft_plan(identity: str, request: Request):
     repo = repo_for(request, identity)
     # Planning is the step after scanning: it works from a finished scan.
-    finished = [s for s in all_items(Scan, repo_id=identity) if s.status == "complete"]
+    finished = [s for s in visible_items(Scan, request, identity) if s.status == "complete"]
     if not finished:
         raise HTTPException(409, "请先在“漏洞分析”完成一次扫描，再汇总规划")
     findings = finished[-1].findings
@@ -759,10 +797,11 @@ async def draft_plan(identity: str, request: Request):
     plan = save(
         Plan(
             repo_id=identity,
+            actor=actor(request),
             tasks=tasks,
             capacity=Capacity().model_dump(mode="json"),
             summary=str(result.get("summary", "")),
-            version=len(all_items(Plan, repo_id=identity)) + 1,
+            version=len(visible_items(Plan, request, identity)) + 1,
         )
     )
     audit("plan_drafted", actor(request), plan_id=plan.id)
@@ -772,7 +811,7 @@ async def draft_plan(identity: str, request: Request):
 @app.post("/api/repos/{identity}/schedule")
 def generate_schedule(identity: str, body: PlanInput, request: Request):
     repo_for(request, identity)
-    if not all_items(Plan, repo_id=identity):
+    if not visible_items(Plan, request, identity):
         raise HTTPException(409, "请先汇总问题并拆分任务，再生成排期")
     try:
         calendar = schedule(body.tasks, body.capacity)
@@ -781,11 +820,12 @@ def generate_schedule(identity: str, body: PlanInput, request: Request):
     plan = save(
         Plan(
             repo_id=identity,
+            actor=actor(request),
             tasks=[t.model_dump(mode="json") for t in body.tasks],
             capacity=body.capacity.model_dump(mode="json"),
             calendar=calendar,
             status="applied",
-            version=len(all_items(Plan, repo_id=identity)) + 1,
+            version=len(visible_items(Plan, request, identity)) + 1,
         )
     )
     audit("schedule_applied", actor(request), plan_id=plan.id, version=plan.version)
@@ -794,8 +834,7 @@ def generate_schedule(identity: str, body: PlanInput, request: Request):
 
 @app.post("/api/plans/{identity}/adjust")
 async def adjust(identity: str, body: Question, request: Request):
-    plan = get(Plan, identity)
-    repo_for(request, plan.repo_id)
+    plan = owned_record(Plan, request, identity)
     result = await ask(
         '把用户要求转为修改后的完整任务和容量，输出 {"summary":"逐项变更解释","tasks":[...],"capacity":{...}}。保持未提及字段不变，不能增加或删除任务；把任务安排到具体某一天（包括周末等休息日）用任务 on 字段（YYYY-MM-DD），不早于某天用 not_before；除非用户明确要求改变工作日，不要修改 capacity.weekdays；任务 dep 不改变。',
         json.dumps(
@@ -821,12 +860,13 @@ async def adjust(identity: str, body: Question, request: Request):
     preview = save(
         Plan(
             repo_id=plan.repo_id,
+            actor=actor(request),
             tasks=[t.model_dump(mode="json") for t in value.tasks],
             capacity=value.capacity.model_dump(mode="json"),
             calendar=calendar,
             status="preview",
             summary=str(result.get("summary", "")),
-            version=len(all_items(Plan, repo_id=plan.repo_id)) + 1,
+            version=len(visible_items(Plan, request, plan.repo_id)) + 1,
         )
     )
     audit("schedule_preview", actor(request), plan_id=preview.id)
@@ -835,16 +875,16 @@ async def adjust(identity: str, body: Question, request: Request):
 
 @app.post("/api/plans/{identity}/apply")
 def apply_plan(identity: str, request: Request):
-    plan = get(Plan, identity)
-    repo_for(request, plan.repo_id)
+    plan = owned_record(Plan, request, identity)
     if plan.status == "applied":
         plan = Plan(
             repo_id=plan.repo_id,
+            actor=actor(request),
             tasks=plan.tasks,
             capacity=plan.capacity,
             calendar=plan.calendar,
             summary="恢复 v" + str(plan.version),
-            version=len(all_items(Plan, repo_id=plan.repo_id)) + 1,
+            version=len(visible_items(Plan, request, plan.repo_id)) + 1,
             status="applied",
         )
     else:
@@ -862,7 +902,7 @@ class StartRun(BaseModel):
 @app.get("/api/repos/{identity}/runs")
 def runs(identity: str, request: Request):
     repo_for(request, identity)
-    return all_items(Run, repo_id=identity)[::-1]
+    return visible_items(Run, request, identity)[::-1]
 
 
 @app.post("/api/repos/{identity}/runs")
@@ -895,12 +935,12 @@ async def start_run(identity: str, body: StartRun, request: Request):
         if not getattr(body.config, key):
             setattr(body.config, key, pref.get(key, []))
     if guest:
-        count = count_items(Run, actor=user, created__startswith=now()[:10])
+        count = count_items(Run, quota_actor=quota_actor(user), created__startswith=now()[:10])
         if count >= settings.guest_daily_agent_runs:
             raise HTTPException(429, "今日访客运行次数已达上限")
     if any(
         r.status in ("starting", "running", "waiting")
-        for r in all_items(Run, repo_id=identity)
+        for r in visible_items(Run, request, identity)
     ):
         raise HTTPException(409, "此仓库已有运行，请先完成或停止")
     run = save(
@@ -909,6 +949,7 @@ async def start_run(identity: str, body: StartRun, request: Request):
             task=body.task.model_dump(mode="json"),
             config={**body.config.model_dump(), **({"simulated": True} if repo.demo else {})},
             actor=user,
+            quota_actor=quota_actor(user),
         )
     )
     jobs[run.id] = launch(run_agent(run.id))

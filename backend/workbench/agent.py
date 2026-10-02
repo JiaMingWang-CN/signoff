@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 from fastapi import HTTPException
 
 from .config import safe_error, settings
+from .sandbox import sandbox_command
 from .db import (
     Event,
     Repository,
@@ -215,7 +216,7 @@ def target_path(run, relative):
     demo = demo_run(run)
     base = Path(get(Repository, run.repo_id).path if demo else run.path).resolve()
     target = (base / relative).resolve()
-    if (demo or run.config["preset"] != "full") and not target.is_relative_to(base):
+    if not target.is_relative_to(base):
         raise ValueError("路径超出工作区")
     if any(p == ".git" or p.startswith(".env") for p in target.parts):
         raise ValueError("禁止访问 Git 元数据或环境密钥文件")
@@ -494,7 +495,7 @@ async def execute_tool(run, name, args):
                 if os.name == "nt"
                 else ["bash", "-lc", text]
             )
-        result = await command(argv, path)
+        result = await command(sandbox_command(argv, path), path)
         result["command"] = text
         if name == "run_tests":
             run.tests = result

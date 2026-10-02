@@ -48,6 +48,7 @@ class Repository(SQLModel, table=True):
 class Scan(SQLModel, table=True):
     id: str = Field(default_factory=lambda: uid("scan"), primary_key=True)
     repo_id: str = Field(index=True)
+    actor: str = Field(default="", index=True)
     status: str = "running"
     findings: list = Field(default_factory=list, sa_column=Column(JSON))
     sources: list = Field(default_factory=list, sa_column=Column(JSON))
@@ -59,6 +60,7 @@ class Scan(SQLModel, table=True):
 class Plan(SQLModel, table=True):
     id: str = Field(default_factory=lambda: uid("plan"), primary_key=True)
     repo_id: str = Field(index=True)
+    actor: str = Field(default="", index=True)
     tasks: list = Field(default_factory=list, sa_column=Column(JSON))
     capacity: dict = Field(default_factory=dict, sa_column=Column(JSON))
     calendar: list = Field(default_factory=list, sa_column=Column(JSON))
@@ -86,6 +88,7 @@ class Run(SQLModel, table=True):
     created: str = Field(default_factory=now)
     finished: str = ""
     actor: str = ""
+    quota_actor: str = ""
     __table_args__ = (Index("ix_run_actor_created", "actor", "created"),)
 
 
@@ -114,6 +117,7 @@ class Conversation(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: uid("chat"), primary_key=True)
     actor: str = Field(index=True)
+    quota_actor: str = Field(default="", index=True)
     title: str = ""
     permission: str = "approve"
     # Reasoning effort chosen in the console; empty follows the "ask" setting.

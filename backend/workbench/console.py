@@ -15,8 +15,9 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, ValidationError
 
-from .config import safe_error
-from .db import Conversation, Event, Plan, Repository, Run, Scan, all_items, get, now, save
+from .config import safe_error, settings
+from .db import Audit, Conversation, Event, Plan, Repository, Run, Scan, all_items, audit, count_items, get, now, save
+from .identity import quota_actor
 from .qa import answer_question
 from .security import active_reviews
 from .services import chat
@@ -235,8 +236,7 @@ async def latest_scan(ctx, args):
     },
 )
 async def list_findings(ctx, args):
-    scan = get(Scan, await latest_scan(ctx, args))
-    api().repo_for(ctx.request, scan.repo_id)
+    scan = api().owned_record(Scan, ctx.request, await latest_scan(ctx, args))
     query = (args.get("query") or "").lower()
     rows = [
         f for f in scan.findings
@@ -335,8 +335,7 @@ async def start_scan(ctx, args):
 
 @tool("review_findings", "write", "AI 复核", "用 AI 复核一次已完成扫描的发现（后台执行，可暂停）", {**repo_arg, "scan_id": string})
 async def review_findings(ctx, args):
-    scan = get(Scan, await latest_scan(ctx, args))
-    api().repo_for(ctx.request, scan.repo_id)
+    scan = api().owned_record(Scan, ctx.request, await latest_scan(ctx, args))
     if scan.status != "complete":
         raise ValueError("请等待扫描完成")
     if scan.id in active_reviews:
@@ -389,7 +388,7 @@ async def plan_id(ctx, args):
     {**repo_arg, "plan_id": string, "capacity": {"type": "object"}},
 )
 async def schedule_plan(ctx, args):
-    plan = get(Plan, await plan_id(ctx, args))
+    plan = api().owned_record(Plan, ctx.request, await plan_id(ctx, args))
     body = api().PlanInput(tasks=plan.tasks, capacity={**(plan.capacity or {}), **(args.get("capacity") or {})})
     return plan_brief(await ctx.call(api().generate_schedule, plan.repo_id, body))
 
@@ -428,7 +427,7 @@ async def start_agent_run(ctx, args):
         raise ValueError("以 auto / full 预设启动运行需要总控台处于完全权限")
     task = None
     if args.get("task_id"):
-        plans = all_items(Plan, repo_id=identity)
+        plans = api().visible_items(Plan, ctx.request, identity)
         task = next((t for t in (plans[-1].tasks if plans else []) if t["id"] == args["task_id"]), None)
         if not task:
             raise ValueError("最新规划里没有任务 " + args["task_id"])
@@ -709,6 +708,15 @@ class Message(BaseModel):
 
 @router.post("/messages")
 async def send(body: Message, request: Request):
+    owner = api().actor(request)
+    quota = quota_actor(owner)
+    if owner.startswith("guest:"):
+        if count_items(Conversation, quota_actor=quota) >= settings.guest_max_conversations and not body.conversation_id:
+            raise HTTPException(429, "访客会话数量已达上限")
+        if count_items(Audit, actor=quota, action="console_message", created__startswith=now()[:10]) >= settings.guest_daily_console_messages:
+            raise HTTPException(429, "今日访客消息数量已达上限")
+        if any(c.status == "running" for c in all_items(Conversation, quota_actor=quota)):
+            raise HTTPException(429, "请等待当前访客消息处理完成")
     if body.permission == "full":
         api().require_login(request, "完全权限需要 GitHub 登录")
         if not body.full_confirmed:
@@ -718,7 +726,9 @@ async def send(body: Message, request: Request):
         if convo.status == "running":
             raise HTTPException(409, "上一条消息还在处理")
     else:
-        convo = Conversation(actor=api().actor(request), title=body.text.strip()[:60])
+        convo = Conversation(actor=owner, quota_actor=quota, title=body.text.strip()[:60])
+    if len(convo.messages) >= 200:
+        raise HTTPException(429, "此会话消息已达上限，请新建会话")
     # A new message instead of a decision declines what was waiting.
     for call in open_calls(convo.messages):
         answer(convo, call, "用户没有批准，而是发送了新消息。")
@@ -729,6 +739,7 @@ async def send(body: Message, request: Request):
         convo.repo_id = body.repo_id
     convo.messages = [*convo.messages, {"role": "user", "content": body.text}]
     convo.updated = now()
+    audit("console_message", quota)
     start(convo, request)
     return convo
 

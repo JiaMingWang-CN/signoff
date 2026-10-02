@@ -23,12 +23,15 @@ class Settings(BaseSettings):
     demo_github_token: str = ""
     guest_daily_agent_runs: int = 5
     guest_daily_llm_tokens: int = 200000
+    guest_daily_console_messages: int = 100
+    guest_max_conversations: int = 20
     llm_timeout_seconds: int = 120
     workspace_dir: str = "~/.oss-workbench/workspaces"
     agent_default_permission: str = "approve"
     agent_max_steps: int = 40
     agent_command_timeout_seconds: int = 300
     agent_max_tokens: int = 200000
+    agent_sandbox: bool = False
     # 一个审批最多等待多久；超时即判拒绝并结束运行，避免永久挂起。
     agent_approval_timeout_seconds: int = 1800
     codegraph_bin: str = "codegraph"

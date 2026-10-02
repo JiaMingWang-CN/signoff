@@ -1,6 +1,15 @@
 from workbench.config import settings
 
 
+def guest_actor(client):
+    import base64
+    import json
+
+    client.get("/api/auth/me")
+    data = client.cookies.get("session").split(".")[0]
+    return "guest:" + json.loads(base64.b64decode(data))["guest_id"]
+
+
 def login(client, monkeypatch, name="maintainer"):
     from urllib.parse import parse_qs, urlparse
 

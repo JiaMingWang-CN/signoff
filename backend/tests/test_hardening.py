@@ -4,7 +4,7 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-from helpers import login
+from helpers import guest_actor, login
 
 from workbench.agent import describe_error, execute_tool, permission
 from workbench.agent import tests_ok as outcome_ok
@@ -209,7 +209,7 @@ def test_approval_records_the_person_who_decided(client, monkeypatch):
 
 def test_sse_ignores_malformed_last_event_id(client, tmp_path):
     repo = save(Repository(name=settings.demo_repo, path=str(tmp_path), status="ready"))
-    run = save(Run(repo_id=repo.id, status="completed", config={"preset": "auto"}))
+    run = save(Run(repo_id=repo.id, actor=guest_actor(client), status="completed", config={"preset": "auto"}))
     response = client.get(
         "/api/runs/" + run.id + "/events", headers={"last-event-id": "abc"}
     )

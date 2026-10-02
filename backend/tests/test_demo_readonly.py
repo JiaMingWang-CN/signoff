@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from helpers import login
+from helpers import guest_actor, login
 
 import workbench.agent as agent
 import workbench.app as routes
@@ -119,7 +119,7 @@ def test_demo_sync_and_pr_are_previews_for_everyone(client, monkeypatch, demo, n
     sync = client.post(f"/api/repos/{demo.id}/sync", json={"mode": "full"})
     assert sync.status_code == 200 and sync.json()["simulated"] is True
     assert get(Repository, demo.id).model_dump() == before
-    run = save(Run(repo_id=demo.id, status="completed", task={"title": "fix"}, diff="preview"))
+    run = save(Run(repo_id=demo.id, actor=guest_actor(client) if not logged_in else "maintainer", status="completed", task={"title": "fix"}, diff="preview"))
     pr = client.post(f"/api/runs/{run.id}/pr")
     assert pr.status_code == 200 and pr.json()["simulated"] is True
     assert not pr.json()["url"] and not get(Run, run.id).pr_url

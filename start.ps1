@@ -13,6 +13,8 @@ if (-not (Test-Path -LiteralPath $taskPython)) {
   python -m venv (Join-Path $taskRoot 'backend/.venv')
   if ($LASTEXITCODE -ne 0) { throw '创建 Python 环境失败' }
 }
+& $taskPython -m pip install --upgrade 'pip>=26.2.0'
+if ($LASTEXITCODE -ne 0) { throw '升级 pip 失败' }
 & $taskPython -m pip install -r (Join-Path $taskRoot 'backend/requirements.txt') -r (Join-Path $taskRoot 'backend/requirements-demo.txt')
 if ($LASTEXITCODE -ne 0) { throw '安装后端依赖失败' }
 Push-Location (Join-Path $taskRoot 'frontend')

@@ -13,6 +13,7 @@ case "$task_codegraph" in
   *) echo "警告：codegraph 版本为 $task_codegraph，已验证版本为 $task_verified_codegraph；检索输出格式可能不同。" >&2 ;;
 esac
 if [ ! -x backend/.venv/bin/python ]; then python3 -m venv backend/.venv; fi
+backend/.venv/bin/python -m pip install --upgrade 'pip>=26.2.0'
 backend/.venv/bin/python -m pip install -r backend/requirements.txt -r backend/requirements-demo.txt
 (cd frontend && npm ci)
 (cd backend && .venv/bin/python run.py) &

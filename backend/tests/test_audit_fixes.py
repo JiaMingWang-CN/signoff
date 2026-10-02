@@ -102,10 +102,12 @@ def test_guest_client_tool_overrides_are_stripped_server_side(client, tmp_path, 
 def test_decide_and_stop_require_the_runner_or_a_login(client, tmp_path):
     repo = demo_repo(tmp_path)
     run = save(Run(repo_id=repo.id, actor="guest:9.9.9.9", config={"preset": "approve"}))
-    assert client.post("/api/runs/" + run.id + "/approvals/whatever", json={"decision": "approve"}).status_code == 403
-    assert client.post("/api/runs/" + run.id + "/stop").status_code == 403
+    assert client.post("/api/runs/" + run.id + "/approvals/whatever", json={"decision": "approve"}).status_code == 404
+    assert client.post("/api/runs/" + run.id + "/stop").status_code == 404
     # The actor that started it may still decide and stop its own run.
-    run.actor = "guest:testclient"
+    from helpers import guest_actor
+
+    run.actor = guest_actor(client)
     save(run)
     assert client.post("/api/runs/" + run.id + "/stop").status_code == 409  # not running
 
@@ -335,23 +337,23 @@ def test_reclaim_keeps_unpushed_work_and_removes_finished_worktrees(tmp_path, mo
         assert kept.path not in removed
 
 
-def test_guest_identity_uses_only_the_proxy_appended_hop():
+def test_guest_quota_address_uses_only_the_proxy_appended_hop():
     from types import SimpleNamespace
 
-    from workbench.app import actor
+    from workbench.identity import client_address
 
     def request(host, forwarded=None):
         headers = {"x-forwarded-for": forwarded} if forwarded else {}
         return SimpleNamespace(session={}, client=SimpleNamespace(host=host), headers=headers)
 
     # Two visitors behind the bundled proxy are two guests, not one.
-    assert actor(request("127.0.0.1", "203.0.113.5")) == "guest:203.0.113.5"
-    assert actor(request("127.0.0.1", "203.0.113.6")) == "guest:203.0.113.6"
+    assert client_address(request("127.0.0.1", "203.0.113.5")) == "203.0.113.5"
+    assert client_address(request("127.0.0.1", "203.0.113.6")) == "203.0.113.6"
     # A client-supplied entry ahead of the proxy's own is ignored.
-    assert actor(request("127.0.0.1", "198.51.100.1, 203.0.113.5")) == "guest:203.0.113.5"
+    assert client_address(request("127.0.0.1", "198.51.100.1, 203.0.113.5")) == "203.0.113.5"
     # A direct, non-loopback peer cannot name another address.
-    assert actor(request("198.51.100.7", "203.0.113.5")) == "guest:198.51.100.7"
-    assert actor(request("127.0.0.1")) == "guest:127.0.0.1"
+    assert client_address(request("198.51.100.7", "203.0.113.5")) == "198.51.100.7"
+    assert client_address(request("127.0.0.1")) == "127.0.0.1"
 
 
 def test_tokens_stored_with_the_previous_key_still_decrypt():

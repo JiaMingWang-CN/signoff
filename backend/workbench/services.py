@@ -15,6 +15,7 @@ from fastapi import HTTPException
 from openai import AsyncOpenAI
 
 from .config import safe_error, settings
+from .identity import quota_actor
 from .db import Preference, Token, get, save
 
 
@@ -355,6 +356,9 @@ def reasoning_effort(purpose):
     return effort if effort in REASONING_EFFORTS else ""
 
 
+guest_llm_lock = asyncio.Lock()
+
+
 async def chat(
     messages,
     tools=None,
@@ -367,36 +371,46 @@ async def chat(
     """`effort` overrides the setting of `purpose` for this one call."""
     from .db import audit, sum_audit_detail
 
-    if actor.startswith("guest:"):
-        used = sum_audit_detail(
-            actor,
-            "llm_usage",
-            "tokens",
-            time.strftime("%Y-%m-%d", time.gmtime()),
-        )
-        if used + max_tokens > settings.guest_daily_llm_tokens:
-            raise HTTPException(429, "今日访客 LLM 配额不足")
-    client, model = llm_client()
+    guest = actor.startswith("guest:")
+    if guest:
+        if guest_llm_lock.locked():
+            raise HTTPException(429, "访客模型请求正在处理，请稍后重试")
+        await guest_llm_lock.acquire()
     try:
-        response = await client.chat.completions.create(
-            model=model,
-            messages=messages,
-            **({"tools": tools} if tools else {}),
-            **({"response_format": {"type": "json_object"}} if structured else {}),
-            **(
-                {"extra_body": {"reasoning_effort": effort}}
-                if (
-                    effort := effort if effort in REASONING_EFFORTS else reasoning_effort(purpose)
-                )
-                else {}
-            ),
-            max_tokens=max_tokens,
-        )
+        if actor.startswith("guest:"):
+            used = sum_audit_detail(
+                quota_actor(actor),
+                "llm_usage",
+                "tokens",
+                time.strftime("%Y-%m-%d", time.gmtime()),
+            )
+            input_bound = len(json.dumps([messages, tools], ensure_ascii=False).encode("utf-8")) + 1024
+            if used + input_bound + max_tokens > settings.guest_daily_llm_tokens:
+                raise HTTPException(429, "今日访客 LLM 配额不足")
+        client, model = llm_client()
+        try:
+            response = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                **({"tools": tools} if tools else {}),
+                **({"response_format": {"type": "json_object"}} if structured else {}),
+                **(
+                    {"extra_body": {"reasoning_effort": effort}}
+                    if (
+                        effort := effort if effort in REASONING_EFFORTS else reasoning_effort(purpose)
+                    )
+                    else {}
+                ),
+                max_tokens=max_tokens,
+            )
+        finally:
+            await client.close()
+        tokens = response.usage.total_tokens if response.usage else 0
+        audit("llm_usage", quota_actor(actor) or "local", tokens=tokens, model=model)
+        return response.choices[0].message, tokens
     finally:
-        await client.close()
-    tokens = response.usage.total_tokens if response.usage else 0
-    audit("llm_usage", actor or "local", tokens=tokens, model=model)
-    return response.choices[0].message, tokens
+        if guest:
+            guest_llm_lock.release()
 
 
 async def ask(prompt, context="", actor="", structured=False, purpose=""):
