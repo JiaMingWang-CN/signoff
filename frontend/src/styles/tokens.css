@@ -1,0 +1,95 @@
+/* Design tokens — 与首页同一套“纸面”语言：暖白底、近黑文字、橙色强调、
+   发丝线边框。深色值同时挂在 :root[data-theme] 与 .ow[data-theme] 上。 */
+:root {
+  --background: #ece8df;
+  --card: #f6f3ec;
+  --sidebar: #ece8df;
+  --popover: #f8f6f0;
+  --foreground: #121210;
+  --muted: #e2ddd1;
+  --muted-foreground: #66645c;
+  --subtle-foreground: #8a877d;
+  --border: rgb(18 18 16 / 0.12);
+  --border-strong: rgb(18 18 16 / 0.24);
+  --input-border: rgb(18 18 16 / 0.2);
+  --primary: #121210;
+  --primary-foreground: #f6f3ec;
+  --brand: #f05a05;
+  --brand-hover: #d94f03;
+  --brand-soft: rgb(240 90 5 / 0.1);
+  --brand-text: #b3470a;
+  --link: #1f5fd1;
+  --success: #13803b;
+  --success-soft: rgb(19 128 59 / 0.1);
+  --warning: #a35a0a;
+  --warning-soft: rgb(217 119 6 / 0.13);
+  --danger: #cf2b1f;
+  --danger-soft: rgb(207 43 31 / 0.09);
+  --info: #1f5fd1;
+  --info-soft: rgb(31 95 209 / 0.09);
+  --human: #c2410c;
+  --human-soft: rgb(240 90 5 / 0.1);
+  --agent: #1f5fd1;
+  --agent-soft: rgb(31 95 209 / 0.09);
+  --diff-add: rgb(19 128 59 / 0.13);
+  --diff-del: rgb(207 43 31 / 0.11);
+  --ring: #f05a05;
+  --overlay: rgb(18 18 16 / 0.42);
+
+  --radius: 8px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --shadow-xs: none;
+  --shadow-md: 0 8px 24px -8px rgb(18 18 16 / 0.18), 0 1px 2px rgb(18 18 16 / 0.06);
+  --shadow-lg: 0 40px 80px -30px rgb(18 18 16 / 0.35), 0 0 0 1px rgb(18 18 16 / 0.06);
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 260ms;
+
+  --font-sans: "Inter Variable", "Inter", "PingFang SC", "Microsoft YaHei UI", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+  --font-serif: "Instrument Serif", "Songti SC", "STSong", serif;
+  color-scheme: light;
+}
+:root[data-theme="dark"],
+.ow[data-theme="dark"] {
+  --background: #0b0b0a;
+  --card: #131311;
+  --sidebar: #0b0b0a;
+  --popover: #181816;
+  --foreground: #f1ede4;
+  --muted: #1b1b19;
+  --muted-foreground: #a6a398;
+  --subtle-foreground: #77746b;
+  --border: rgb(241 237 228 / 0.12);
+  --border-strong: rgb(241 237 228 / 0.24);
+  --input-border: rgb(241 237 228 / 0.2);
+  --primary: #f1ede4;
+  --primary-foreground: #121210;
+  --brand: #ff6b1a;
+  --brand-hover: #ff8340;
+  --brand-soft: rgb(255 107 26 / 0.14);
+  --brand-text: #ff9a5c;
+  --link: #6aa8ff;
+  --success: #4ade80;
+  --success-soft: rgb(74 222 128 / 0.12);
+  --warning: #fbbf24;
+  --warning-soft: rgb(251 191 36 / 0.12);
+  --danger: #f87171;
+  --danger-soft: rgb(248 113 113 / 0.12);
+  --info: #6aa8ff;
+  --info-soft: rgb(106 168 255 / 0.12);
+  --human: #ff9a5c;
+  --human-soft: rgb(255 107 26 / 0.14);
+  --agent: #6aa8ff;
+  --agent-soft: rgb(106 168 255 / 0.12);
+  --diff-add: rgb(74 222 128 / 0.14);
+  --diff-del: rgb(248 113 113 / 0.14);
+  --ring: #ff6b1a;
+  --overlay: rgb(0 0 0 / 0.6);
+  --shadow-md: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  --shadow-lg: 0 40px 80px -30px rgb(0 0 0 / 0.8), 0 0 0 1px rgb(241 237 228 / 0.06);
+  color-scheme: dark;
+}

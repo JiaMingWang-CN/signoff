@@ -1,0 +1,35 @@
+{
+  "name": "signoff",
+  "version": "0.2.0",
+  "license": "MIT",
+  "description": "Local-first open-source maintenance workbench: code search, vulnerability scanning, planning and agent-assisted fixes (FastAPI + React).",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JiaMingWang-CN/signoff.git"
+  },
+  "homepage": "https://github.com/JiaMingWang-CN/signoff",
+  "bugs": {
+    "url": "https://github.com/JiaMingWang-CN/signoff/issues"
+  },
+  "author": "Signoff contributors",
+  "keywords": [
+    "open-source",
+    "maintenance",
+    "codegraph",
+    "agent",
+    "llm",
+    "fastapi",
+    "react"
+  ],
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

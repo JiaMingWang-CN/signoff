@@ -1,0 +1,362 @@
+/* “纸面”层：把首页的视觉语言带到工作台页面，但保持克制——
+   不加动效与装饰，只改颜色、圆角、字体层级与线条。
+   所有结构尺寸（行高、卡片头高度、输入框高度）保持不变，
+   因为分页与“一屏放下”的布局依赖它们。最后载入，覆盖基础组件样式。 */
+
+::selection {
+  background: var(--brand);
+  color: #0b0b0a;
+}
+
+/* ───────── 外壳 ───────── */
+.ow.app .topbar {
+  background: var(--background);
+}
+.brand {
+  letter-spacing: -0.02em;
+}
+.brand em {
+  font-family: var(--font-serif);
+  font-style: normal;
+  font-size: 1.25em;
+  line-height: 1;
+  color: var(--brand);
+  margin: 0 0.06em;
+}
+/* 品牌标识：首页导航里的三道横条 */
+.logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 0;
+  background:
+    linear-gradient(var(--foreground), var(--foreground)) 0 3px / 12px 3px no-repeat,
+    linear-gradient(var(--brand), var(--brand)) 0 9px / 22px 3px no-repeat,
+    linear-gradient(var(--foreground), var(--foreground)) 0 15px / 17px 3px no-repeat;
+}
+.logo svg {
+  display: none;
+}
+.cmdk-trigger {
+  border-radius: 999px;
+  background: var(--card);
+  border-color: var(--border);
+  padding-left: 14px;
+}
+.avatar {
+  background: var(--card);
+}
+.sidebar {
+  background: var(--sidebar);
+}
+.nav-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.nav a,
+.nav button {
+  border-radius: 10px;
+}
+.nav a:hover,
+.nav button:hover {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+.nav a.active {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-weight: 600;
+}
+.nav a.active svg.lucide {
+  color: var(--brand);
+}
+.user-card {
+  background: var(--card);
+}
+
+/* ───────── 页面标题：首页的“眉标 + 紧凑大标题” ───────── */
+.breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle-foreground);
+}
+.breadcrumb svg.lucide {
+  display: none;
+}
+.breadcrumb > span::before {
+  content: "—";
+  margin: 0 8px;
+  color: var(--border-strong);
+}
+.breadcrumb > span {
+  color: var(--brand-text);
+}
+.page-head h1 {
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 750;
+  letter-spacing: -0.045em;
+}
+.page-head p {
+  font-size: 13.5px;
+}
+
+/* ───────── 卡片与分区 ───────── */
+.card {
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+.card-head h3 {
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.card-foot {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.stat {
+  --stat-pad: 14px;
+}
+.stat .label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.stat .value {
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: -0.045em;
+}
+.stat .value small {
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.link-more,
+.ow.app a.link-more {
+  color: var(--brand-text);
+  font-weight: 600;
+}
+.bar {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+.bar i {
+  border-radius: 999px;
+}
+.empty .ico {
+  border-radius: 50%;
+}
+.empty strong,
+.chat-empty h3 {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+.chat-empty h3 {
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+/* ───────── 按钮 ───────── */
+.btn {
+  border-radius: 999px;
+  letter-spacing: -0.005em;
+}
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 80%, var(--background));
+}
+.btn-brand {
+  background: var(--brand);
+  color: #0b0b0a;
+  font-weight: 600;
+}
+.btn-brand:hover:not(:disabled) {
+  background: var(--brand-hover);
+}
+.btn-outline {
+  background: transparent;
+  border-color: var(--input-border);
+  box-shadow: none;
+}
+.btn-outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  border-color: var(--border-strong);
+}
+.btn-secondary {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+.btn-danger {
+  background: var(--danger);
+}
+.btn-icon {
+  border-radius: 50%;
+}
+
+/* ───────── 徽标、分段、标签页 ───────── */
+.badge {
+  border-radius: 999px;
+  background: transparent;
+  font-weight: 500;
+}
+.badge.mono,
+.badge-sm {
+  letter-spacing: 0;
+}
+.seg {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+.seg button {
+  border-radius: 999px;
+}
+.seg button[aria-pressed="true"] {
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.tabs button {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.chip-toggle {
+  border-radius: 999px;
+}
+
+/* ───────── 表单 ───────── */
+.input,
+.select,
+.textarea {
+  border-color: var(--input-border);
+  border-radius: 10px;
+  background-color: var(--card);
+}
+.input:hover:not(:focus):not(:disabled),
+.select:hover:not(:focus):not(:disabled),
+.textarea:hover:not(:focus):not(:disabled) {
+  border-color: var(--border-strong);
+}
+.field > .label {
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.input-wrap .input {
+  border-radius: 999px;
+}
+.checkbox {
+  border-color: var(--input-border);
+}
+kbd {
+  font-family: var(--font-mono);
+}
+
+/* ───────── 表格：眉标式表头 ───────── */
+.data-table th {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtle-foreground);
+  background: transparent;
+}
+.data-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+.data-table .row-title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.pager .pg,
+.pager {
+  font-variant-numeric: tabular-nums;
+}
+.kv-grid > div {
+  border-radius: 12px;
+}
+.kv-grid span {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ───────── 提示、弹层 ───────── */
+.alert {
+  border-radius: 14px;
+}
+dialog.dlg,
+dialog.sheet {
+  border-radius: var(--radius-xl);
+  background: var(--popover);
+  box-shadow: var(--shadow-lg);
+}
+dialog.sheet {
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+}
+dialog.dlg::backdrop,
+dialog.sheet::backdrop {
+  backdrop-filter: blur(3px);
+}
+.dlg-head h2 {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.menu,
+.cmd-input,
+.cmd-list {
+  background: var(--popover);
+}
+.menu {
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+}
+.menu a,
+.menu button,
+.cmd-list button {
+  border-radius: 8px;
+}
+.toast {
+  border-radius: 14px;
+  background: var(--popover);
+}
+
+/* ───────── 代码与预览 ───────── */
+.code-block,
+.preview,
+.live-code,
+.md pre {
+  border-radius: 12px;
+}
+
+/* ───────── 对话（总控台 / Agent） ───────── */
+.chat-bubble {
+  border-radius: 18px 18px 4px 18px;
+  background: var(--foreground);
+  color: var(--background);
+}
+.chat-bubble .chat-task-id {
+  color: color-mix(in srgb, var(--background) 60%, transparent);
+}
+.chat-result,
+.approval,
+.chat-input {
+  border-radius: 18px;
+}
+.chat-list-item {
+  border-radius: 12px;
+}
+.chat-list-item.active {
+  background: var(--card);
+  border-color: var(--border-strong);
+}
+.chat-list-item.active .muted {
+  color: var(--brand-text);
+}

@@ -1,0 +1,5 @@
+# 默认文本文件以 LF 存储与检出，跨平台一致；PowerShell 脚本保留 Windows 习惯。
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
