@@ -5,15 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>Signoff · 开源项目工作台</title>
-    <script>
-      // Applied before the first paint, so the saved theme is not replaced
-      // by the default one a moment later.
-      try {
-        if (localStorage.getItem("ow-theme") === "dark") {
-          document.documentElement.dataset.theme = "dark";
-        }
-      } catch (e) {}
-    </script>
+    <script src="/theme.js"></script>
   </head>
   <body>
     <div id="root"></div>

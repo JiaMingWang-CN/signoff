@@ -9,7 +9,7 @@
 - 命令只能读写本次 worktree；系统工具和 Python 虚拟环境只读挂载，应用配置、数据库、主机 home 不挂载。网络默认隔离，需要网络的仓库测试会如实失败。完整权限的文件工具仍不能离开 worktree。
 - 保持应用 `.env` 为 `root:signoff 640`、数据目录 `signoff:signoff 750`，TLS 私钥为 `root:root 600`。
 - 安装依赖前升级虚拟环境 pip：`.venv/bin/python -m pip install --upgrade 'pip>=26.2.0'`。只安装可信且锁定的依赖。
-- 在确认 HTTPS 管理入口仍能访问后，删除 UFW 中 `2005/tcp` 的 Anywhere 放行规则；保留 SSH 和现有 HTTPS 管理入口。
+- 在确认 HTTPS 管理入口仍能访问后，删除 UFW 中 `2005/tcp` 的 Anywhere 放行规则，添加 `ufw deny 2005/tcp`；保留 SSH 和现有 HTTPS 管理入口。
 - GitHub 凭据、演示 token 和登录白名单由部署者配置。升级不覆盖这些值。
 
 访客使用签名 cookie 中的随机身份隔离会话、扫描、规划和运行；IP 只用于配额。历史没有归属字段的演示记录仅登录管理员可见。每日默认 100 条控制台消息、每 IP 最多 20 个会话，单个会话最多 200 条记录；新建 cookie 不会重置 IP 配额。
