@@ -662,7 +662,7 @@ def scans(identity: str, request: Request):
 @app.post("/api/repos/{identity}/scans")
 async def scan(identity: str, request: Request):
     repo = repo_for(request, identity)
-    if any(s.status == "running" for s in visible_items(Scan, request, identity)):
+    if any(s.status == "running" for s in all_items(Scan, repo_id=identity)):
         raise HTTPException(409, "扫描正在进行")
     item = save(Scan(repo_id=identity, sha=repo.sha, actor=actor(request)))
     launch(scan_repository(item.id, actor(request)))
@@ -940,7 +940,7 @@ async def start_run(identity: str, body: StartRun, request: Request):
             raise HTTPException(429, "今日访客运行次数已达上限")
     if any(
         r.status in ("starting", "running", "waiting")
-        for r in visible_items(Run, request, identity)
+        for r in all_items(Run, repo_id=identity)
     ):
         raise HTTPException(409, "此仓库已有运行，请先完成或停止")
     run = save(

@@ -71,6 +71,19 @@ def test_guest_conversation_cap_survives_cookie_reset(client, monkeypatch):
     assert client.post("/api/console/messages", json={"text": "second"}).status_code == 429
 
 
+def test_guest_cookie_reset_cannot_parallelize_shared_demo_work(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(routes, "client_address", lambda request: "203.0.113.90")
+    monkeypatch.setattr(routes, "scan_repository", lambda *args: pytest.fail("Scan must not start"))
+    monkeypatch.setattr(routes, "run_agent", lambda *args: pytest.fail("Agent must not start"))
+    owner = guest_actor(client)
+    repo = save(Repository(name=settings.demo_repo, path=str(tmp_path), status="ready"))
+    save(Scan(repo_id=repo.id, actor=owner, status="running"))
+    save(Run(repo_id=repo.id, actor=owner, status="running"))
+    client.cookies.clear()
+    assert client.post(f"/api/repos/{repo.id}/scans").status_code == 409
+    assert client.post(f"/api/repos/{repo.id}/runs", json={"task": {"id": "T1", "title": "test", "h": 1}}).status_code == 409
+
+
 def test_full_permission_file_tools_stay_inside_worktree(tmp_path):
     repo = save(Repository(name="o/security", path=str(tmp_path), status="ready"))
     run = Run(repo_id=repo.id, path=str(tmp_path), config=RunConfig(preset="full").model_dump())
