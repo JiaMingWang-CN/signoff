@@ -181,6 +181,11 @@ def test_safe_error_keeps_ordinary_text_and_redacts_real_tokens():
     assert safe_error("github_pat_" + "Y" * 30) == "[redacted]"
 
 
+def test_safe_error_ignores_placeholder_secrets(monkeypatch):
+    monkeypatch.setattr(settings, "demo_github_token", "0")
+    assert safe_error("503: 请配置") == "503: 请配置"
+
+
 # ── approvals and SSE ────────────────────────────────────────────────
 
 

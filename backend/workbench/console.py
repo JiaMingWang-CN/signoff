@@ -649,7 +649,9 @@ async def advance(identity, request, decision=None):
         save(convo)
         raise
     except Exception as failure:
-        convo.error = safe_error(failure) or failure.__class__.__name__
+        # str(HTTPException) is "503: detail"; the user only needs the detail.
+        reason = failure.detail if isinstance(failure, HTTPException) else failure
+        convo.error = safe_error(str(reason)) or failure.__class__.__name__
         convo.status = "idle"
     finally:
         turns.pop(identity, None)

@@ -71,7 +71,9 @@ def safe_error(error: Exception | str, limit: int | None = 4000) -> str:
         settings.github_client_secret,
         settings.demo_github_token,
     ]:
-        if value:
+        # A placeholder such as "0" is not a secret; replacing it would mangle
+        # ordinary text like a status code.
+        if value and len(value) >= 8:
             text = text.replace(value, "[redacted]")
     import re
 
